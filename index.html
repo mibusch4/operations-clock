@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Desk Mini Clock</title>
+
+<style>
+:root {
+    color-scheme: dark;
+    --clock-color: #8e5cff;
+    --accent-color: #50e3c2;
+    --muted-color: #79768a;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+body {
+    display: grid;
+    place-items: center;
+    color: var(--clock-color);
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body::before {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    content: "";
+    opacity: 0.07;
+    pointer-events: none;
+    background-image:
+        radial-gradient(1px 1px at 24px 38px, #fff 99%, transparent),
+        radial-gradient(1px 1px at 152px 116px, #fff 99%, transparent),
+        radial-gradient(1.5px 1.5px at 258px 194px, #fff 99%, transparent);
+    background-size: 320px 260px;
+    animation: star-drift 90s linear infinite;
+}
+
+@keyframes star-drift {
+    to {
+        background-position: 320px 260px;
+    }
+}
+
+.clock {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 100%;
+    padding: 5vh 4vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.eyebrow {
+    margin-bottom: clamp(1rem, 3vh, 2.5rem);
+    color: var(--muted-color);
+    font-size: clamp(0.7rem, 1.2vw, 1rem);
+    font-weight: 600;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+}
+
+.time-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.7rem, 2.2vw, 2rem);
+    white-space: nowrap;
+}
+
+#time {
+    color: var(--clock-color);
+    font-size: clamp(7.2rem, 25.2vw, 20.4rem);
+    font-weight: 650;
+    letter-spacing: -0.075em;
+    line-height: 0.88;
+    font-variant-numeric: tabular-nums;
+    text-shadow:
+        0 0 5px rgba(142, 92, 255, 0.5),
+        0 0 10px rgba(142, 92, 255, 0.35),
+        0 0 20px rgba(142, 92, 255, 0.25);
+}
+
+.time-meta {
+    min-width: 3.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.18em;
+    padding-top: 0.12em;
+    color: var(--accent-color);
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+#seconds {
+    font-size: clamp(2rem, 6vw, 5.5rem);
+    font-weight: 500;
+    line-height: 0.95;
+}
+
+#period {
+    font-size: clamp(0.9rem, 2.2vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1;
+}
+
+.date-rule {
+    width: min(38vw, 30rem);
+    height: 1px;
+    margin: clamp(1.5rem, 4vh, 3rem) 0 clamp(1rem, 2.4vh, 1.8rem);
+    background: linear-gradient(90deg, transparent, rgba(80, 227, 194, 0.55), transparent);
+}
+
+#date {
+    color: #c4c0d0;
+    font-size: clamp(0.8rem, 1.65vw, 1.35rem);
+    font-weight: 500;
+    letter-spacing: 0.3em;
+}
+
+@media (max-width: 600px) {
+    .clock {
+        padding-right: 3vw;
+        padding-left: 3vw;
+    }
+
+    #time {
+        font-size: clamp(6rem, 25.2vw, 9.6rem);
+    }
+
+    .time-row {
+        gap: 2vw;
+    }
+
+    #seconds {
+        font-size: clamp(1.7rem, 6vw, 2.5rem);
+    }
+
+    #period {
+        font-size: clamp(0.8rem, 2.2vw, 1rem);
+    }
+
+    #date {
+        letter-spacing: 0.18em;
+    }
+}
+</style>
+</head>
+
+<body>
+<main class="clock" aria-label="Current local time and date">
+    <div class="eyebrow">Operations clock</div>
+    <div class="time-row" aria-live="off">
+        <div id="time"></div>
+        <div class="time-meta">
+            <div id="seconds"></div>
+            <div id="period"></div>
+        </div>
+    </div>
+    <div class="date-rule" aria-hidden="true"></div>
+    <div id="date"></div>
+</main>
+
+<script>
+const timeFormatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+});
+
+function updateClock() {
+    const now = new Date();
+    const parts = Object.fromEntries(
+        timeFormatter.formatToParts(now).map(({ type, value }) => [type, value])
+    );
+    const secondsElement = document.getElementById("seconds");
+    const secondsChanged = secondsElement.textContent !== parts.second;
+
+    document.getElementById("time").textContent = `${parts.hour}:${parts.minute}`;
+    secondsElement.textContent = parts.second;
+    if (secondsChanged) {
+        secondsElement.animate(
+            [
+                { textShadow: "0 0 0 rgba(80, 227, 194, 0)" },
+                { textShadow: "0 0 12px rgba(80, 227, 194, 0.65)", offset: 0.35 },
+                { textShadow: "0 0 0 rgba(80, 227, 194, 0)" }
+            ],
+            { duration: 700, easing: "ease-out" }
+        );
+    }
+    document.getElementById("period").textContent = parts.dayPeriod;
+    document.getElementById("date").textContent = dateFormatter.format(now).toUpperCase();
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
