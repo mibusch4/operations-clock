@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#000000">
-<title>Operations Clock v1.0</title>
+<title>Operations Clock v1.1</title>
 
 <style>
 :root {
@@ -81,13 +81,13 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: clamp(0.7rem, 2.2vw, 2rem);
+    gap: clamp(1rem, 3vw, 2.5rem);
     white-space: nowrap;
 }
 
 #time {
     color: var(--clock-color);
-    font-size: clamp(7.2rem, 25.2vw, 20.4rem);
+    font-size: clamp(8.64rem, 30.24vw, 24.48rem);
     font-weight: 650;
     letter-spacing: -0.075em;
     line-height: 0.88;
@@ -99,28 +99,31 @@ body::before {
 }
 
 .time-meta {
-    min-width: 3.2em;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.18em;
     padding-top: 0.12em;
     color: var(--accent-color);
-    text-align: left;
+    text-align: center;
     font-variant-numeric: tabular-nums;
 }
 
 #seconds {
+    width: 2ch;
     font-size: clamp(2rem, 6vw, 5.5rem);
     font-weight: 500;
     line-height: 0.95;
+    text-align: center;
 }
 
 #period {
+    width: 100%;
     font-size: clamp(0.9rem, 2.2vw, 1.8rem);
     font-weight: 700;
     letter-spacing: 0.16em;
     line-height: 1;
+    text-align: center;
 }
 
 .date-rule {
@@ -144,11 +147,11 @@ body::before {
     }
 
     #time {
-        font-size: clamp(6rem, 25.2vw, 9.6rem);
+        font-size: clamp(7.2rem, 30.24vw, 11.52rem);
     }
 
     .time-row {
-        gap: 2vw;
+        gap: 3vw;
     }
 
     #seconds {
@@ -200,26 +203,38 @@ function updateClock() {
         timeFormatter.formatToParts(now).map(({ type, value }) => [type, value])
     );
     const secondsElement = document.getElementById("seconds");
-    const secondsChanged = secondsElement.textContent !== parts.second;
 
     document.getElementById("time").textContent = `${parts.hour}:${parts.minute}`;
     secondsElement.textContent = parts.second;
-    if (secondsChanged) {
-        secondsElement.animate(
-            [
-                { textShadow: "0 0 0 rgba(80, 227, 194, 0)" },
-                { textShadow: "0 0 12px rgba(80, 227, 194, 0.65)", offset: 0.35 },
-                { textShadow: "0 0 0 rgba(80, 227, 194, 0)" }
-            ],
-            { duration: 700, easing: "ease-out" }
-        );
-    }
     document.getElementById("period").textContent = parts.dayPeriod;
     document.getElementById("date").textContent = dateFormatter.format(now).toUpperCase();
 }
 
+function pulseSeconds() {
+    document.getElementById("seconds").animate(
+        [
+            { textShadow: "0 0 0 rgba(80, 227, 194, 0)" },
+            { textShadow: "0 0 12px rgba(80, 227, 194, 0.975)", offset: 0.35 },
+            { textShadow: "0 0 0 rgba(80, 227, 194, 0)" }
+        ],
+        { duration: 700, easing: "ease-out" }
+    );
+}
+
+function scheduleClockUpdate() {
+    const now = Date.now();
+    const nextSecond = Math.floor(now / 1000) * 1000 + 1000;
+    const pulseTime = nextSecond - 120;
+
+    setTimeout(pulseSeconds, Math.max(0, pulseTime - now));
+    setTimeout(() => {
+        updateClock();
+        scheduleClockUpdate();
+    }, Math.max(0, nextSecond - now));
+}
+
 updateClock();
-setInterval(updateClock, 1000);
+scheduleClockUpdate();
 </script>
 </body>
 </html>
