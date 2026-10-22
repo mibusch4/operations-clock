@@ -203,9 +203,13 @@ function updateClock() {
         timeFormatter.formatToParts(now).map(({ type, value }) => [type, value])
     );
     const secondsElement = document.getElementById("seconds");
+    const secondsChanged = secondsElement.textContent !== parts.second;
 
     document.getElementById("time").textContent = `${parts.hour}:${parts.minute}`;
     secondsElement.textContent = parts.second;
+    if (secondsChanged) {
+        pulseSeconds();
+    }
     document.getElementById("period").textContent = parts.dayPeriod;
     document.getElementById("date").textContent = dateFormatter.format(now).toUpperCase();
 }
@@ -221,20 +225,8 @@ function pulseSeconds() {
     );
 }
 
-function scheduleClockUpdate() {
-    const now = Date.now();
-    const nextSecond = Math.floor(now / 1000) * 1000 + 1000;
-    const pulseTime = nextSecond - 120;
-
-    setTimeout(pulseSeconds, Math.max(0, pulseTime - now));
-    setTimeout(() => {
-        updateClock();
-        scheduleClockUpdate();
-    }, Math.max(0, nextSecond - now));
-}
-
 updateClock();
-scheduleClockUpdate();
+setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
