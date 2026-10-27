@@ -34,9 +34,35 @@ body {
     font-family: "Segoe UI", Arial, sans-serif;
 }
 
-body::before {
+/* =========================================================
+   NEW: PHASED WIREFRAME EARTH
+   This is our still-image test layer.
+   ========================================================= */
+.earth-background {
     position: fixed;
     z-index: 0;
+    inset: 0;
+
+    background-image: url("phased-wireframe-earth-v1.png");
+    background-repeat: no-repeat;
+
+    /* These are the values we'll tune first */
+    background-size: 100% auto;
+    background-position: right center;
+    opacity: 0.4;
+
+    pointer-events: none;
+}
+
+/*
+   Existing star field.
+
+   Changed z-index from 0 to 1 so the stars remain above
+   the Earth background but below the clock.
+*/
+body::before {
+    position: fixed;
+    z-index: 1;
     inset: 0;
     content: "";
     opacity: 0.07;
@@ -57,7 +83,14 @@ body::before {
 
 .clock {
     position: relative;
-    z-index: 1;
+
+    /*
+       Changed from z-index: 1 to z-index: 2.
+       This guarantees the clock stays above both the
+       Earth and star layers.
+    */
+    z-index: 2;
+
     width: 100%;
     min-height: 100%;
     padding: 5vh 4vw;
@@ -130,7 +163,12 @@ body::before {
     width: min(38vw, 30rem);
     height: 1px;
     margin: clamp(1.5rem, 4vh, 3rem) 0 clamp(1rem, 2.4vh, 1.8rem);
-    background: linear-gradient(90deg, transparent, rgba(80, 227, 194, 0.55), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(80, 227, 194, 0.55),
+        transparent
+    );
 }
 
 #date {
@@ -170,15 +208,25 @@ body::before {
 </head>
 
 <body>
+
+<!-- =======================================================
+     NEW: PHASED WIREFRAME EARTH
+     This sits behind the existing clock.
+     ======================================================= -->
+<div class="earth-background" aria-hidden="true"></div>
+
 <main class="clock" aria-label="Current local time and date">
     <div class="eyebrow">Operations clock</div>
+
     <div class="time-row" aria-live="off">
         <div id="time"></div>
+
         <div class="time-meta">
             <div id="seconds"></div>
             <div id="period"></div>
         </div>
     </div>
+
     <div class="date-rule" aria-hidden="true"></div>
     <div id="date"></div>
 </main>
@@ -199,34 +247,59 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 function updateClock() {
     const now = new Date();
+
     const parts = Object.fromEntries(
-        timeFormatter.formatToParts(now).map(({ type, value }) => [type, value])
+        timeFormatter
+            .formatToParts(now)
+            .map(({ type, value }) => [type, value])
     );
+
     const secondsElement = document.getElementById("seconds");
     const secondsChanged = secondsElement.textContent !== parts.second;
 
-    document.getElementById("time").textContent = `${parts.hour}:${parts.minute}`;
+    document.getElementById("time").textContent =
+        `${parts.hour}:${parts.minute}`;
+
     secondsElement.textContent = parts.second;
+
     if (secondsChanged) {
         pulseSeconds();
     }
-    document.getElementById("period").textContent = parts.dayPeriod;
-    document.getElementById("date").textContent = dateFormatter.format(now).toUpperCase();
+
+    document.getElementById("period").textContent =
+        parts.dayPeriod;
+
+    document.getElementById("date").textContent =
+        dateFormatter.format(now).toUpperCase();
 }
 
 function pulseSeconds() {
     document.getElementById("seconds").animate(
         [
-            { textShadow: "0 0 0 rgba(80, 227, 194, 0)" },
-            { textShadow: "0 0 12px rgba(80, 227, 194, 0.975)", offset: 0.35 },
-            { textShadow: "0 0 0 rgba(80, 227, 194, 0)" }
+            {
+                textShadow:
+                    "0 0 0 rgba(80, 227, 194, 0)"
+            },
+            {
+                textShadow:
+                    "0 0 12px rgba(80, 227, 194, 0.975)",
+                offset: 0.35
+            },
+            {
+                textShadow:
+                    "0 0 0 rgba(80, 227, 194, 0)"
+            }
         ],
-        { duration: 700, easing: "ease-out" }
+        {
+            duration: 700,
+            easing: "ease-out"
+        }
     );
 }
 
 updateClock();
 setInterval(updateClock, 1000);
 </script>
+
 </body>
 </html>
