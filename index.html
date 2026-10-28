@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#000000">
-<title>Operations Clock v1.1</title>
+<title>Operations Clock v1.2 Rotating Earth Prototype</title>
 
 <style>
 :root {
@@ -35,31 +35,39 @@ body {
 }
 
 /* =========================================================
-   NEW: PHASED WIREFRAME EARTH
-   This is our still-image test layer.
+   ROTATING PHASED WIREFRAME EARTH PROTOTYPE
    ========================================================= */
+
 .earth-background {
     position: fixed;
     z-index: 0;
     inset: 0;
-
-    background-image: url("phased-wireframe-earth-v1.png");
-    background-repeat: no-repeat;
-
-    /* These are the values we'll tune first */
-    background-size: 100% auto;
-    background-position: right center;
-    opacity: 0.4;
-
+    overflow: hidden;
     pointer-events: none;
 }
 
 /*
-   Existing star field.
-
-   Changed z-index from 0 to 1 so the stars remain above
-   the Earth background but below the clock.
+   Three.js inserts its canvas inside this container.
 */
+.earth-background canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/*
+   If WebGL or Three.js fails, display the existing PNG
+   rather than leaving the right side completely empty.
+*/
+.earth-background.fallback {
+    background-image: url("phased-wireframe-earth-v1.png");
+    background-repeat: no-repeat;
+    background-size: 100% auto;
+    background-position: right center;
+    opacity: 0.4;
+}
+
+/* Existing star field */
 body::before {
     position: fixed;
     z-index: 1;
@@ -83,25 +91,21 @@ body::before {
 
 .clock {
     position: relative;
-
-    /*
-       Changed from z-index: 1 to z-index: 2.
-       This guarantees the clock stays above both the
-       Earth and star layers.
-    */
     z-index: 2;
 
     width: 100%;
     min-height: 100%;
     padding: 5vh 4vw;
+
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    /* Shift clock into the empty space left of Earth */
-    transform: translateX(-20vw);
 
+    text-align: center;
+
+    /* Preserve your finalized left-side clock position */
+    transform: translateX(-20vw);
 }
 
 .eyebrow {
@@ -212,11 +216,12 @@ body::before {
 
 <body>
 
-<!-- =======================================================
-     NEW: PHASED WIREFRAME EARTH
-     This sits behind the existing clock.
-     ======================================================= -->
-<div class="earth-background" aria-hidden="true"></div>
+<!-- Rotating globe canvas is inserted here -->
+<div
+    id="earth-background"
+    class="earth-background"
+    aria-hidden="true">
+</div>
 
 <main class="clock" aria-label="Current local time and date">
     <div class="eyebrow">Operations clock</div>
@@ -233,6 +238,10 @@ body::before {
     <div class="date-rule" aria-hidden="true"></div>
     <div id="date"></div>
 </main>
+
+<!-- =======================================================
+     EXISTING CLOCK SCRIPT
+     ======================================================= -->
 
 <script>
 const timeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -258,7 +267,8 @@ function updateClock() {
     );
 
     const secondsElement = document.getElementById("seconds");
-    const secondsChanged = secondsElement.textContent !== parts.second;
+    const secondsChanged =
+        secondsElement.textContent !== parts.second;
 
     document.getElementById("time").textContent =
         `${parts.hour}:${parts.minute}`;
@@ -302,6 +312,188 @@ function pulseSeconds() {
 
 updateClock();
 setInterval(updateClock, 1000);
+</script>
+
+<!-- =======================================================
+     ROTATING EARTH SCRIPT
+
+     Three.js is loaded from a CDN. The browser must have
+     internet access when the page loads.
+     ======================================================= -->
+
+<script type="module">
+import * as THREE from
+    "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js";
+
+const earthContainer =
+    document.getElementById("earth-background");
+
+try {
+    const scene = new THREE.Scene();
+
+    /*
+       Camera uses normalized 3D coordinates. The globe is
+       shifted right through its X position below.
+    */
+    const camera = new THREE.PerspectiveCamera(
+        34,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100
+    );
+
+    camera.position.set(0, 0, 8);
+
+    const renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: "low-power"
+    });
+
+    renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio || 1, 1.5)
+    );
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+    renderer.setClearColor(0x000000, 0);
+
+    earthContainer.appendChild(renderer.domElement);
+
+/*
+   OUTER GROUP:
+   Controls globe position and establishes the fixed
+   planetary axis. This group does NOT rotate.
+*/
+const earthTiltGroup = new THREE.Group();
+
+earthTiltGroup.position.set(3.1, -0.35, 0);
+
+earthTiltGroup.rotation.z =
+    THREE.MathUtils.degToRad(-23.5);
+
+scene.add(earthTiltGroup);
+
+/*
+   INNER GROUP:
+   Earth itself rotates inside the stationary tilted axis.
+*/
+const earthGroup = new THREE.Group();
+
+earthTiltGroup.add(earthGroup);
+
+    /*
+       SphereGeometry creates latitude and longitude segments.
+       The material renders only the geometry edges.
+    */
+    const globeGeometry = new THREE.SphereGeometry(
+        3.35,
+        36,
+        24
+    );
+
+    const edgeGeometry =
+        new THREE.EdgesGeometry(globeGeometry, 1);
+
+    /*
+       Soft silver-white line layer.
+    */
+    const wireMaterial =
+        new THREE.LineBasicMaterial({
+            color: 0xe8edf3,
+            transparent: true,
+            opacity: 0.23
+        });
+
+    const wireframe =
+        new THREE.LineSegments(
+            edgeGeometry,
+            wireMaterial
+        );
+
+    earthGroup.add(wireframe);
+
+    /*
+       Second, slightly larger layer creates a restrained glow.
+       This is intentionally weak.
+    */
+    const glowMaterial =
+        new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.055
+        });
+
+    const glowWireframe =
+        new THREE.LineSegments(
+            edgeGeometry,
+            glowMaterial
+        );
+
+    glowWireframe.scale.setScalar(1.006);
+    earthGroup.add(glowWireframe);
+
+    /*
+       One full rotation every 10 minutes.
+
+       10 minutes = 600,000 milliseconds.
+    */
+    const rotationDuration = 30000;
+
+    let previousTimestamp = performance.now();
+
+    function animate(timestamp) {
+        const elapsed =
+            timestamp - previousTimestamp;
+
+        previousTimestamp = timestamp;
+
+        earthGroup.rotation.y +=
+            (elapsed / rotationDuration) *
+            Math.PI * 2;
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+
+    /*
+       Keep the globe correctly proportioned if the webview
+       changes size after waking.
+    */
+    function resizeEarth() {
+        camera.aspect =
+            window.innerWidth / window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+    }
+
+    window.addEventListener(
+        "resize",
+        resizeEarth
+    );
+}
+catch (error) {
+    /*
+       Preserve the existing PNG when WebGL or the remote
+       Three.js module cannot load.
+    */
+    console.error(
+        "Rotating Earth could not be initialized:",
+        error
+    );
+
+    earthContainer.classList.add("fallback");
+}
 </script>
 
 </body>
